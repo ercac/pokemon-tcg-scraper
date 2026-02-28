@@ -1,6 +1,13 @@
 import { request } from './client'
-import type { CardDetail, PaginatedCards, SetInfo } from '../types/card'
+import type { CardDetail, CardSuggestion, PaginatedCards, SetInfo } from '../types/card'
 import type { PriceComparison, PriceHistoryPoint } from '../types/price'
+
+export async function suggestCards(
+  query: string,
+  limit: number = 8,
+): Promise<CardSuggestion[]> {
+  return request<CardSuggestion[]>('/api/cards/suggest', { q: query, limit })
+}
 
 export async function searchCards(
   query: string,

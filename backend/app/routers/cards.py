@@ -2,11 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.schemas.card import CardDetail, PaginatedCardResponse
+from app.schemas.card import CardDetail, CardSuggestion, PaginatedCardResponse
 from app.schemas.price import PriceComparisonResponse, PriceHistoryPoint
 from app.services import card_service, price_service
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
+
+
+@router.get("/suggest", response_model=list[CardSuggestion])
+async def suggest_cards(
+    q: str = Query(..., min_length=2, max_length=200),
+    limit: int = Query(8, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+):
+    return await card_service.suggest_cards(db, q, limit)
 
 
 @router.get("/search", response_model=PaginatedCardResponse)

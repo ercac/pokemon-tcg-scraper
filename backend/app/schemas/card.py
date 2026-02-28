@@ -48,6 +48,15 @@ class CardDetail(BaseModel):
         return []
 
 
+class CardSuggestion(BaseModel):
+    id: int
+    name: str
+    set_name: str
+    image_small: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class PaginatedCardResponse(BaseModel):
     items: list[CardSummary]
     total: int

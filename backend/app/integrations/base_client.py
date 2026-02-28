@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAPIClient:
-    def __init__(self, base_url: str, max_concurrent: int = 5, timeout: float = 30.0):
+    def __init__(self, base_url: str, max_concurrent: int = 5, timeout: float = 60.0):
         self._base_url = base_url
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._timeout = timeout

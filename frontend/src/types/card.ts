@@ -27,6 +27,13 @@ export interface CardDetail {
   updated_at: string
 }
 
+export interface CardSuggestion {
+  id: number
+  name: string
+  set_name: string
+  image_small: string | null
+}
+
 export interface PaginatedCards {
   items: CardSummary[]
   total: number

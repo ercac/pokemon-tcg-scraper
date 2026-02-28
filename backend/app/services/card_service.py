@@ -10,9 +10,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.integrations.pokemon_tcg_api import pokemon_tcg_client
 from app.models.card import Card
 from app.models.price import Price
-from app.schemas.card import CardDetail, CardSummary, PaginatedCardResponse
+from app.schemas.card import CardDetail, CardSuggestion, CardSummary, PaginatedCardResponse
 
 logger = logging.getLogger(__name__)
+
+
+async def suggest_cards(
+    db: AsyncSession, query: str, limit: int = 8
+) -> list[CardSuggestion]:
+    """Return quick name suggestions from local DB only (no external API call)."""
+    stmt = (
+        select(Card)
+        .where(Card.name.ilike(f"%{query}%"))
+        .order_by(Card.name)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    cards = result.scalars().all()
+    return [CardSuggestion.model_validate(c) for c in cards]
 
 
 def _api_card_to_dict(data: dict[str, Any]) -> dict[str, Any]:
