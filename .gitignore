@@ -1,4 +1,20 @@
+# ========================
+# SECRETS & ENVIRONMENT
+# ========================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+secrets.json
+service-account*.json
+
+# ========================
 # Python
+# ========================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -10,29 +26,46 @@ build/
 venv/
 env/
 
+# ========================
 # Database
+# ========================
 *.db
 *.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
-# Environment
-.env
-
+# ========================
 # IDE
+# ========================
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
+# ========================
 # Node
+# ========================
 node_modules/
 frontend/dist/
 frontend/.vite/
 
+# ========================
 # OS
+# ========================
 .DS_Store
 Thumbs.db
+Desktop.ini
 
+# ========================
 # Testing
+# ========================
 .pytest_cache/
 .coverage
 htmlcov/
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml

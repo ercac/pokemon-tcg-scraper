@@ -1,0 +1,20 @@
+# Secrets - NEVER include in Docker images
+.env
+.env.*
+*.key
+*.pem
+
+# Dependencies (will be installed fresh via npm ci)
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore

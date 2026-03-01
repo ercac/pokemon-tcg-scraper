@@ -1,0 +1,31 @@
+# Secrets - NEVER include in Docker images
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+secrets.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database files
+*.db
+*.sqlite3
+*.db-journal
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
