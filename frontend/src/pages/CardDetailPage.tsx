@@ -1,6 +1,10 @@
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useCard, useCardPrices } from '../hooks/useCard'
+import { useCard, useCardPrices, useRelatedCards } from '../hooks/useCard'
+import { useRecentlyViewed } from '../hooks/useRecentlyViewed'
 import CardImage from '../components/cards/CardImage'
+import CardGrid from '../components/cards/CardGrid'
+import Breadcrumb from '../components/common/Breadcrumb'
 import PriceComparisonTable from '../components/prices/PriceComparisonTable'
 import PriceHistoryChart from '../components/prices/PriceHistoryChart'
 import LoadingSpinner from '../components/common/LoadingSpinner'
@@ -12,6 +16,19 @@ export default function CardDetailPage() {
 
   const { data: card, isLoading: cardLoading, error: cardError } = useCard(cardId)
   const { data: prices, isLoading: pricesLoading } = useCardPrices(cardId)
+  const { data: relatedCards } = useRelatedCards(cardId)
+  const { addCard } = useRecentlyViewed()
+
+  useEffect(() => {
+    if (card) {
+      addCard({
+        id: card.id,
+        name: card.name,
+        set_name: card.set_name,
+        image_small: card.image_small,
+      })
+    }
+  }, [card, addCard])
 
   if (cardLoading) return <LoadingSpinner />
   if (cardError) return <ErrorMessage message={cardError.message} />
@@ -19,6 +36,15 @@ export default function CardDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: 'Home', to: '/' },
+          { label: 'Search', to: `/search?q=${encodeURIComponent(card.name)}` },
+          { label: card.name },
+        ]}
+      />
+
       {/* Card header */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
         {/* Card image */}
@@ -26,7 +52,7 @@ export default function CardDetailPage() {
           <CardImage
             src={card.image_large || card.image_small}
             alt={card.name}
-            className="w-full max-w-sm mx-auto aspect-[2.5/3.5]"
+            className="w-full max-w-xs mx-auto lg:max-w-sm aspect-[2.5/3.5]"
           />
         </div>
 
@@ -86,7 +112,7 @@ export default function CardDetailPage() {
             ) : prices ? (
               <PriceComparisonTable data={prices} />
             ) : (
-              <p className="text-slate-400 text-center py-4">No price data available</p>
+              <p className="text-slate-400 text-center py-4">No price data available yet. Prices will be fetched from marketplaces.</p>
             )}
           </div>
         </div>
@@ -96,6 +122,16 @@ export default function CardDetailPage() {
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <PriceHistoryChart cardId={cardId} />
       </div>
+
+      {/* More from this set */}
+      {relatedCards && relatedCards.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            More from {card.set_name}
+          </h2>
+          <CardGrid cards={relatedCards} />
+        </section>
+      )}
     </div>
   )
 }

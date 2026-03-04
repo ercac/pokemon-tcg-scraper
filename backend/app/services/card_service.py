@@ -64,22 +64,42 @@ def _extract_tcgplayer_product_id(tcgplayer: dict) -> int | None:
 
 
 async def search_cards(
-    db: AsyncSession, query: str, page: int = 1, page_size: int = 20
+    db: AsyncSession, query: str, page: int = 1, page_size: int = 20,
+    sort_by: str = "name", sort_dir: str = "asc",
+    rarity: str | None = None, supertype: str | None = None,
 ) -> PaginatedCardResponse:
     """Search cards by name. Fetches from API if not enough local results."""
     offset = (page - 1) * page_size
 
-    # Check local DB first
-    count_stmt = select(func.count(Card.id)).where(Card.name.ilike(f"%{query}%"))
+    # Build filter conditions
+    filters = [Card.name.ilike(f"%{query}%")]
+    if rarity:
+        filters.append(Card.rarity == rarity)
+    if supertype:
+        filters.append(Card.supertype == supertype)
+
+    # Check local DB first (base name filter only for API fetch decision)
+    base_count_stmt = select(func.count(Card.id)).where(Card.name.ilike(f"%{query}%"))
+    total_result = await db.execute(base_count_stmt)
+    base_total = total_result.scalar() or 0
+
+    if base_total < page_size:
+        # Fetch from Pokemon TCG API and upsert
+        await _fetch_and_upsert_cards(db, query, page, page_size)
+
+    # Count with all filters applied
+    count_stmt = select(func.count(Card.id)).where(*filters)
     total_result = await db.execute(count_stmt)
     local_total = total_result.scalar() or 0
 
-    if local_total < page_size:
-        # Fetch from Pokemon TCG API and upsert
-        await _fetch_and_upsert_cards(db, query, page, page_size)
-        # Recount after upsert
-        total_result = await db.execute(count_stmt)
-        local_total = total_result.scalar() or 0
+    # Determine sort column
+    sort_columns = {
+        "name": Card.name,
+        "set_name": Card.set_name,
+        "rarity": Card.rarity,
+    }
+    sort_column = sort_columns.get(sort_by, Card.name)
+    order = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
 
     # Query with lowest price subquery
     lowest_price_subq = (
@@ -95,8 +115,8 @@ async def search_cards(
     stmt = (
         select(Card, lowest_price_subq.c.lowest_price)
         .outerjoin(lowest_price_subq, Card.id == lowest_price_subq.c.card_id)
-        .where(Card.name.ilike(f"%{query}%"))
-        .order_by(Card.name)
+        .where(*filters)
+        .order_by(order)
         .offset(offset)
         .limit(page_size)
     )
@@ -142,6 +162,90 @@ async def get_card_by_pokemon_tcg_id(
     stmt = select(Card).where(Card.pokemon_tcg_id == pokemon_tcg_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_popular_cards(db: AsyncSession, limit: int = 12) -> list[CardSummary]:
+    """Return cards with the most price data, or most recently added as fallback."""
+    popular_stmt = (
+        select(Card, func.count(Price.id).label("price_count"))
+        .outerjoin(Price, Card.id == Price.card_id)
+        .group_by(Card.id)
+        .order_by(func.count(Price.id).desc(), Card.updated_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(popular_stmt)
+    rows = result.all()
+
+    if not rows or all(row[1] == 0 for row in rows):
+        # Fallback: return most recently added cards
+        fallback_stmt = select(Card).order_by(Card.created_at.desc()).limit(limit)
+        result = await db.execute(fallback_stmt)
+        cards = result.scalars().all()
+        rows = [(c, 0) for c in cards]
+
+    return [
+        CardSummary(
+            id=card.id,
+            name=card.name,
+            set_name=card.set_name,
+            number=card.number,
+            rarity=card.rarity,
+            image_small=card.image_small,
+            lowest_price=None,
+            lowest_price_marketplace=None,
+        )
+        for card, _ in rows
+    ]
+
+
+async def get_cards_from_same_set(
+    db: AsyncSession, card_id: int, limit: int = 6
+) -> list[CardSummary]:
+    """Return other cards from the same set as the given card."""
+    card_stmt = select(Card).where(Card.id == card_id)
+    card_result = await db.execute(card_stmt)
+    card = card_result.scalar_one_or_none()
+    if card is None:
+        return []
+
+    stmt = (
+        select(Card)
+        .where(Card.set_code == card.set_code)
+        .where(Card.id != card_id)
+        .order_by(Card.name)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    cards = result.scalars().all()
+    return [
+        CardSummary(
+            id=c.id,
+            name=c.name,
+            set_name=c.set_name,
+            number=c.number,
+            rarity=c.rarity,
+            image_small=c.image_small,
+            lowest_price=None,
+            lowest_price_marketplace=None,
+        )
+        for c in cards
+    ]
+
+
+async def get_facets(db: AsyncSession) -> dict:
+    """Return distinct rarity and supertype values for filter dropdowns."""
+    rarity_stmt = (
+        select(Card.rarity)
+        .where(Card.rarity.isnot(None))
+        .distinct()
+        .order_by(Card.rarity)
+    )
+    supertype_stmt = select(Card.supertype).distinct().order_by(Card.supertype)
+
+    rarities = (await db.execute(rarity_stmt)).scalars().all()
+    supertypes = (await db.execute(supertype_stmt)).scalars().all()
+
+    return {"rarities": list(rarities), "supertypes": list(supertypes)}
 
 
 async def _fetch_and_upsert_cards(

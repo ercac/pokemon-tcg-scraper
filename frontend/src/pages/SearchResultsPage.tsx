@@ -1,19 +1,60 @@
+import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useCardSearch } from '../hooks/useCardSearch'
+import { getCardFacets } from '../api/cards'
+import { useToast } from '../components/common/Toast'
 import CardGrid from '../components/cards/CardGrid'
+import CardGridSkeleton from '../components/common/CardGridSkeleton'
+import SearchToolbar from '../components/search/SearchToolbar'
 import Pagination from '../components/common/Pagination'
-import LoadingSpinner from '../components/common/LoadingSpinner'
-import ErrorMessage from '../components/common/ErrorMessage'
 
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { showToast } = useToast()
+
   const query = searchParams.get('q') || ''
   const page = parseInt(searchParams.get('page') || '1', 10)
+  const sortBy = searchParams.get('sort_by') || 'name'
+  const sortDir = searchParams.get('sort_dir') || 'asc'
+  const rarity = searchParams.get('rarity') || ''
+  const supertype = searchParams.get('supertype') || ''
 
-  const { data, isLoading, error, refetch } = useCardSearch(query, page)
+  const { data, isLoading, error } = useCardSearch({
+    q: query,
+    page,
+    sort_by: sortBy,
+    sort_dir: sortDir,
+    rarity: rarity || undefined,
+    supertype: supertype || undefined,
+  })
 
-  const handlePageChange = (newPage: number) => {
-    setSearchParams({ q: query, page: String(newPage) })
+  const { data: facets } = useQuery({
+    queryKey: ['card-facets'],
+    queryFn: getCardFacets,
+    staleTime: 30 * 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (error) {
+      showToast(error.message, 'error')
+    }
+  }, [error, showToast])
+
+  const updateParams = (updates: Record<string, string>) => {
+    const params: Record<string, string> = { q: query }
+    if (sortBy !== 'name' || sortDir !== 'asc') {
+      params.sort_by = sortBy
+      params.sort_dir = sortDir
+    }
+    if (rarity) params.rarity = rarity
+    if (supertype) params.supertype = supertype
+    // Apply updates and reset page to 1 if filter/sort changed
+    const newParams = { ...params, ...updates }
+    if (updates.sort_by || updates.rarity || updates.supertype) {
+      newParams.page = '1'
+    }
+    setSearchParams(newParams)
   }
 
   if (!query) {
@@ -38,14 +79,20 @@ export default function SearchResultsPage() {
         )}
       </div>
 
-      {isLoading && <LoadingSpinner />}
+      {/* Sort & Filter Toolbar */}
+      <SearchToolbar
+        sortBy={sortBy}
+        sortDir={sortDir}
+        rarity={rarity}
+        supertype={supertype}
+        rarities={facets?.rarities || []}
+        supertypes={facets?.supertypes || []}
+        onSortChange={(sb, sd) => updateParams({ sort_by: sb, sort_dir: sd })}
+        onRarityChange={(r) => updateParams({ rarity: r })}
+        onSupertypeChange={(s) => updateParams({ supertype: s })}
+      />
 
-      {error && (
-        <ErrorMessage
-          message={error.message}
-          onRetry={() => refetch()}
-        />
-      )}
+      {isLoading && <CardGridSkeleton count={20} />}
 
       {data && (
         <>
@@ -53,7 +100,7 @@ export default function SearchResultsPage() {
           <Pagination
             page={data.page}
             totalPages={data.total_pages}
-            onPageChange={handlePageChange}
+            onPageChange={(newPage) => updateParams({ page: String(newPage) })}
           />
         </>
       )}

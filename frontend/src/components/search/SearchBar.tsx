@@ -138,14 +138,14 @@ export default function SearchBar({ large = false, initialQuery = '', variant = 
       </form>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-[60vh] overflow-y-auto">
           <ul>
             {suggestions.map((suggestion, index) => (
               <li
                 key={suggestion.id}
                 onClick={() => selectSuggestion(suggestion)}
                 onMouseEnter={() => setActiveIndex(index)}
-                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors touch-manipulation ${
                   index === activeIndex ? 'bg-blue-50' : 'hover:bg-slate-50'
                 }`}
               >

@@ -1,6 +1,18 @@
+import { useQuery } from '@tanstack/react-query'
 import SearchBar from '../components/search/SearchBar'
+import { useRecentlyViewed } from '../hooks/useRecentlyViewed'
+import RecentlyViewedRow from '../components/cards/RecentlyViewedRow'
+import HorizontalCardScroller from '../components/cards/HorizontalCardScroller'
+import { getPopularCards } from '../api/cards'
 
 export default function HomePage() {
+  const { cards: recentCards } = useRecentlyViewed()
+  const { data: popularCards } = useQuery({
+    queryKey: ['cards', 'popular'],
+    queryFn: () => getPopularCards(12),
+    staleTime: 10 * 60 * 1000,
+  })
+
   return (
     <div className="flex flex-col items-center justify-center px-4">
       {/* Hero section */}
@@ -13,6 +25,14 @@ export default function HomePage() {
         </p>
         <SearchBar large />
       </div>
+
+      {/* Recently Viewed */}
+      <RecentlyViewedRow cards={recentCards} />
+
+      {/* Popular Cards */}
+      {popularCards && popularCards.length > 0 && (
+        <HorizontalCardScroller title="Popular Cards" cards={popularCards} />
+      )}
 
       {/* Feature cards */}
       <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">

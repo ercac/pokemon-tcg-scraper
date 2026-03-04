@@ -11,7 +11,7 @@ export default function CardTile({ card }: CardTileProps) {
   return (
     <Link
       to={`/cards/${card.id}`}
-      className="group bg-white rounded-xl shadow-sm hover:shadow-lg border border-slate-200 hover:border-blue-300 transition-all duration-200 overflow-hidden flex flex-col"
+      className="group bg-white rounded-xl shadow-sm hover:shadow-xl border border-slate-200 hover:border-blue-300 transition-all duration-300 overflow-hidden flex flex-col hover:-translate-y-1 hover:scale-[1.02]"
     >
       <div className="aspect-[2.5/3.5] p-3 bg-slate-50">
         <CardImage

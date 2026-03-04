@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { CardDetail, CardSuggestion, PaginatedCards, SetInfo } from '../types/card'
+import type { CardDetail, CardSuggestion, CardSummary, PaginatedCards, SetInfo } from '../types/card'
 import type { PriceComparison, PriceHistoryPoint } from '../types/price'
 
 export async function suggestCards(
@@ -9,16 +9,18 @@ export async function suggestCards(
   return request<CardSuggestion[]>('/api/cards/suggest', { q: query, limit })
 }
 
-export async function searchCards(
-  query: string,
-  page: number = 1,
-  pageSize: number = 20,
-): Promise<PaginatedCards> {
-  return request<PaginatedCards>('/api/cards/search', {
-    q: query,
-    page,
-    page_size: pageSize,
-  })
+export interface SearchParams {
+  q: string
+  page?: number
+  page_size?: number
+  sort_by?: string
+  sort_dir?: string
+  rarity?: string
+  supertype?: string
+}
+
+export async function searchCards(params: SearchParams): Promise<PaginatedCards> {
+  return request<PaginatedCards>('/api/cards/search', params as Record<string, string | number | undefined>)
 }
 
 export async function getCard(cardId: number): Promise<CardDetail> {
@@ -42,4 +44,16 @@ export async function getPriceHistory(
 
 export async function getSets(): Promise<SetInfo[]> {
   return request<SetInfo[]>('/api/sets')
+}
+
+export async function getPopularCards(limit: number = 12): Promise<CardSummary[]> {
+  return request<CardSummary[]>('/api/cards/popular', { limit })
+}
+
+export async function getRelatedCards(cardId: number, limit: number = 6): Promise<CardSummary[]> {
+  return request<CardSummary[]>(`/api/cards/${cardId}/related`, { limit })
+}
+
+export async function getCardFacets(): Promise<{ rarities: string[]; supertypes: string[] }> {
+  return request('/api/cards/facets')
 }
